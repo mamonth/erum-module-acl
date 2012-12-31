@@ -447,9 +447,14 @@ class Acl extends \Erum\ModuleAbstract
      */
     public function getResourceId( $resource )
     {
-        if ( ( is_object( $resource ) && !$resource instanceof \Acl\iResource ) || is_array( $resource ) )
+        if ( is_object( $resource ) && !($resource instanceof \Acl\iResource) )
         {
-            throw new \Acl\Exception( 'Resource must be string (integer) or iResource implemented object, ' . gettype( $resource ) . ' given.' );
+            throw new \Acl\Exception( 'Resource must be iResource implemented object, instance of ' . get_class( $resource ) . ' given.' );
+        }
+
+        if( is_array( $resource ) || is_resource( $resource ) )
+        {
+            throw new \Acl\Exception( 'Resource must be an string or integer, ' . gettype( $resource ) . ' given.' );
         }
 
         return $resource instanceof \Acl\iResource ? $resource->getResourceId() : $resource;
