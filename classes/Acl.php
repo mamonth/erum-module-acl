@@ -19,19 +19,21 @@ class Acl extends \Erum\ModuleAbstract
      *
      * @var array
      */
-    protected $roles = array( );
+    protected $roles = array();
+
     /**
      * Registered resources
      *
      * @var array
      */
-    protected $resources = array( );
+    protected $resources = array();
+
     /**
      * Registered access rules
      *
      * @var array
      */
-    protected $rules = array( );
+    protected $rules = array();
 
     /**
      * Just for ModuleAbstract implementation
@@ -40,13 +42,14 @@ class Acl extends \Erum\ModuleAbstract
      */
     public function __construct( array $config )
     {
-        
+
     }
 
     /**
      * Only for automatic tips in NetBeans.
      *
      * @param string $configAlias
+     *
      * @return \Acl
      */
     public static function factory( $configAlias = 'default' )
@@ -56,21 +59,18 @@ class Acl extends \Erum\ModuleAbstract
 
     /**
      * Check is $resource and $action allowed for $role
-     * 
+     *
      * @param array | string | \Acl\iRole $roles
-     * @param string | \Acl\iResource $resource
-     * @param string $action
-     * @param function $callback
+     * @param string | \Acl\iResource     $resource
+     * @param string                      $action
+     *
      * @return boolean
      */
-    public function isAllowed( $roles, $resource, $action, $callback = null )
+    public function isAllowed( $roles, $resource, $action )
     {
         if( is_array( $roles ) )
         {
-            $roles = array_map( function( $role )
-                    {
-                        return Acl::getRoleId( $role );
-                    }, $roles );
+            $roles = array_map( function ( $role ) { return Acl::getRoleId( $role ); }, $roles );
         }
         elseif( $roles instanceof \Acl\iRole )
         {
@@ -80,18 +80,17 @@ class Acl extends \Erum\ModuleAbstract
         {
             $roles = (array)$roles;
         }
-        
+
         $resource = $this->hasResource( $resource ) ? self::getResourceId( $resource ) : null;
-        
+
         // loop for matching rule
         do
         {
-            if ( ($rule = $this->findMatchRole( $resource, $roles, $action ) ) )
+            if( ( $rule = $this->findMatchRole( $resource, $roles, $action ) ) )
             {
                 return $rule['allow'];
             }
-        }
-        // go level up in resources tree (child resources inherit rules from parent)
+        } // go level up in resources tree (child resources inherit rules from parent)
         while ( null !== $resource && ( $resource = $this->resources[$resource]['parent'] ) );
 
         return false;
@@ -100,10 +99,11 @@ class Acl extends \Erum\ModuleAbstract
     /**
      * Add allow rule.
      * Any of params can be null (means all)
-     * 
-     * @param \Acl\iRole | string $role
+     *
+     * @param \Acl\iRole | string     $role
      * @param \Acl\iResource | string $resource
-     * @param string $action
+     * @param string                  $action
+     *
      * @return Acl
      */
     public function allow( $role, $resource, $action )
@@ -116,10 +116,11 @@ class Acl extends \Erum\ModuleAbstract
     /**
      * Add deny rule.
      * Any of params can be null (means all)
-     * 
-     * @param \Acl\iRole | string $role
+     *
+     * @param \Acl\iRole | string     $role
      * @param \Acl\iResource | string $resource
-     * @param string $action
+     * @param string                  $action
+     *
      * @return Acl
      */
     public function deny( $role, $resource, $action )
@@ -131,22 +132,24 @@ class Acl extends \Erum\ModuleAbstract
 
     /**
      * Add a new role.
-     * 
-     * @param string | \Acl\iRole $role
+     *
+     * @param string | \Acl\iRole         $role
      * @param array | string | \Acl\iRole $parents
+     *
+     * @throws Acl\Exception
      * @return Acl
      */
     public function addRole( $role, $parents = null )
     {
-        $parents = null === $parents ? null : (array) $parents;
+        $parents = null === $parents ? null : (array)$parents;
 
         $role = $this->getRoleId( $role );
 
-        if ( null !== $parents )
+        if( null !== $parents )
         {
-            foreach ( $parents as $parentRole )
+            foreach( $parents as $parentRole )
             {
-                if ( !$this->hasRole( $parentRole ) )
+                if( !$this->hasRole( $parentRole ) )
                 {
                     Throw new \Acl\Exception( 'The role "' . $parentRole . '" specified as a parent for the "' . $role . '" does not exist !' );
                 }
@@ -156,7 +159,7 @@ class Acl extends \Erum\ModuleAbstract
         }
 
         $this->roles[$role] = array(
-            'children' => array( ),
+            'children' => array(),
             'parents' => $parents
         );
 
@@ -165,9 +168,10 @@ class Acl extends \Erum\ModuleAbstract
 
     /**
      * Checks whether there is a role.
-     * 
+     *
      * @param type $role
-     * @return type 
+     *
+     * @return type
      */
     public function hasRole( $role )
     {
@@ -176,36 +180,24 @@ class Acl extends \Erum\ModuleAbstract
 
     /**
      * Add new resource.
-     * 
-     * @param string | \Acl\iResource $role
-     * @param string | \Acl\iResource $parents
+     *
+     * @param      $resource
+     *
      * @return Acl
      */
-    public function addResource( $resource, $parent = null )
+    public function addResource( $resource )
     {
-        if ( null !== $parent )
-        {
-            if ( !$this->hasResource( $parent ) )
-            {
-                Throw new \Acl\Exception( 'The resource "' . $parent . '" specified as a parent for the "' . $resource . '" does not exist !' );
-            }
-
-                $this->resources[$parent]['children'][] = $resource;
-        }
-
-        $this->resources[$resource] = array(
-            'children' => array( ),
-            'parent' => $parent
-        );
+        $this->resources[$resource] = array();
 
         return $this;
     }
 
     /**
      * Checks whether there is a resource.
-     * 
+     *
      * @param \Acl\iResource | string $resource
-     * @return boolean 
+     *
+     * @return boolean
      */
     public function hasResource( $resource )
     {
@@ -214,8 +206,8 @@ class Acl extends \Erum\ModuleAbstract
 
     /**
      * Internal method for rules adding
-     * 
-     * @param bool $allow
+     *
+     * @param bool  $allow
      * @param array $roles
      * @param array $resources
      * @param array $actions
@@ -225,28 +217,38 @@ class Acl extends \Erum\ModuleAbstract
         // normalize input values
         $allow = $allow ? true : false;
 
-        $roles = null === $roles ? null : array_map( function( $role )
-                        {
-                            return Acl::getRoleId( $role );
-                        }, (array) $roles );
+        $roles = null === $roles ? null : array_map( function ( $role ) { return Acl::getRoleId( $role ); }, (array)$roles );
 
-        $resources = null === $resources ? null : array_map( function( $res )
-                        {
-                            return Acl::getResourceId( $res );
-                        }, (array) $resources );
+        if( null !== $resources )
+        {
+            $resources = (array)$resources;
 
-        $actions = null === $actions ? null : (array) $actions;
+            foreach( $resources as &$res )
+            {
+                $res = Acl::getResourceId( $res );
 
+                // auto register resource
+                if( !isset( $this->resources[ $res ] ) )
+                {
+                    $this->addResource( $res );
+                }
+            }
+        }
+
+        $actions = null === $actions ? null : (array)$actions;
 
         //Building rule from bottom to top
         $rule = array(
             'allow' => $allow,
-                //'assert' => $assertion,
+            //'assert' => $assertion,
         );
 
-        $rule = null === $actions ? array( 'allActions' => $rule ) : array( 'byActionId' => array_fill_keys( $actions, $rule ) );
-        $rule = null === $roles ? array( 'allRoles' => $rule ) : array( 'byRoleId' => array_fill_keys( $roles, $rule ) );
-        $rule = null === $resources ? array( 'allResources' => $rule ) : array( 'byResourceId' => array_fill_keys( $resources, $rule ) );
+        $rule = null === $actions ? array( 'allActions' => $rule ) : array( 'byActionId' => array_fill_keys( $actions,
+                                                                                                             $rule ) );
+        $rule = null === $roles ? array( 'allRoles' => $rule ) : array( 'byRoleId' => array_fill_keys( $roles,
+                                                                                                       $rule ) );
+        $rule = null === $resources ? array( 'allResources' => $rule ) : array( 'byResourceId' => array_fill_keys( $resources,
+                                                                                                                   $rule ) );
 
         $this->rules = \Erum\Arr::merge( $this->rules, $rule );
     }
@@ -257,27 +259,30 @@ class Acl extends \Erum\ModuleAbstract
      * @param string $resource  resource id
      * @param array  $roles     array of role ids
      * @param string $action  action
+     *
      * @return array|boolean a matching rule on success, false otherwise.
      */
     protected function findMatchRole( $resource, $roles, $action )
     {
-        foreach ( $roles as $role )
+        foreach( $roles as $role )
         {
             // role unknown - skip
-            if ( null !== $role && !$this->hasRole( $role ) )
+            if( null !== $role && !$this->hasRole( $role ) )
                 continue;
 
             // find match for this role
-            if ( ( $rule = $this->findMatch( $this->rules, $resource, $role, $action ) ) )
+            if( ( $rule = $this->findMatch( $this->rules, $resource, $role, $action ) ) )
             {
                 return $rule;
             }
 
             // try parents of role (starting at last added parent role)
-            if ( null !== $role && !empty( $this->roles[$role]['parents'] ) )
+            if( null !== $role && !empty( $this->roles[$role]['parents'] ) )
             {
+                $rule = $this->findMatchRole( $resource, array_reverse( $this->_roles[$role]['parents'] ), $action );
+
                 // let's see if any of the parent roles for this role return a valid rule
-                if ( ($rule = $this->findMatchRole( $resource, array_reverse( $this->_roles[$role]['parents'] ), $action ) ) !== false )
+                if( $rule !== false )
                 {
                     return $rule;
                 }
@@ -293,19 +298,23 @@ class Acl extends \Erum\ModuleAbstract
      * @param array  $attach    the (remaining) rules array
      * @param string $resource  resource id
      * @param string $role      role id
-     * @param string $action action
+     * @param string $action    action
+     *
      * @return array|boolean a matching rule on success, false otherwise.
      */
-    private function findMatch( & $attach, $resource, $role, $action )
+    private function findMatch( &$attach, $resource, $role, $action )
     {
         // resource level
-        if ( false !== $resource )
+        if( false !== $resource )
         {
-            if ( isset( $attach['byResourceId'][$resource] ) && ($rule = $this->findMatch( $attach['byResourceId'][$resource], false, $role, $action ) ) )
+            if(
+                isset( $attach['byResourceId'][$resource] ) &&
+                ( $rule = $this->findMatch( $attach['byResourceId'][$resource], false, $role, $action ) )
+            )
             {
                 return $rule;
             }
-            elseif ( isset( $attach['allResources'] ) )
+            elseif( isset( $attach['allResources'] ) )
             {
                 $attach = & $attach['allResources'];
             }
@@ -318,11 +327,14 @@ class Acl extends \Erum\ModuleAbstract
         // role level
         if ( false !== $role )
         {
-            if ( isset( $attach['byRoleId'][$role] ) && ($rule = $this->findMatch( $attach['byRoleId'][$role], false, false, $action ) ) )
+            if(
+                isset( $attach['byRoleId'][$role] ) &&
+                ( $rule = $this->findMatch( $attach['byRoleId'][$role], false, false, $action ) )
+            )
             {
                 return $rule;
             }
-            elseif ( isset( $attach['allRoles'] ) )
+            elseif( isset( $attach['allRoles'] ) )
             {
                 $attach = & $attach['allRoles'];
             }
@@ -332,15 +344,15 @@ class Acl extends \Erum\ModuleAbstract
             }
         }
 
-        if ( null === $action )
+        if( null === $action )
         {
             $specificDeny = false;
 
-            if ( isset( $attach['byActionId'] ) )
+            if( isset( $attach['byActionId'] ) )
             {
-                foreach ( $attach['byActionId'] as $rule )
+                foreach( $attach['byActionId'] as $rule )
                 {
-                    if ( $this->ruleRunnable( $rule, false ) )
+                    if( $this->ruleRunnable( $rule, false ) )
                     {
                         $specificDeny = $rule;
                         break;
@@ -348,9 +360,9 @@ class Acl extends \Erum\ModuleAbstract
                 }
             }
 
-            if ( !empty( $attach['allActions'] ) && $this->ruleRunnable( $attach['allActions'] ) )
+            if( !empty( $attach['allActions'] ) && $this->ruleRunnable( $attach['allActions'] ) )
             {
-                if ( $attach['allActions']['allow'] && $specificDeny !== false )
+                if( $attach['allActions']['allow'] && $specificDeny !== false )
                 {
                     return $specificDeny;
                 }
@@ -375,9 +387,9 @@ class Acl extends \Erum\ModuleAbstract
         }
         else
         {
-            if ( empty( $attach['byActionId'] ) || !isset( $attach['byActionId'][$action] ) )
+            if( empty( $attach['byActionId'] ) || !isset( $attach['byActionId'][$action] ) )
             {
-                if ( !empty( $attach['allActions'] ) && $this->ruleRunnable( $attach['allActions'] ) )
+                if( !empty( $attach['allActions'] ) && $this->ruleRunnable( $attach['allActions'] ) )
                 {
                     return $attach['allActions'];
                 }
@@ -386,7 +398,7 @@ class Acl extends \Erum\ModuleAbstract
                     return false;
                 }
             }
-            elseif ( isset( $attach['byActionId'][$action] ) && $this->ruleRunnable( $attach['byActionId'][$action] ) )
+            elseif( isset( $attach['byActionId'][$action] ) && $this->ruleRunnable( $attach['byActionId'][$action] ) )
             {
                 return $attach['byActionId'][$action];
             }
@@ -405,19 +417,23 @@ class Acl extends \Erum\ModuleAbstract
      *
      * @param  array   $rule  the rule
      * @param  boolean $allow verify if rule is allowing/denying
+     *
      * @return boolean rule can be applied to arguments
      */
     private function ruleRunnable( $rule, $allow = null )
     {
-        if ( null !== $allow )
+        if( null !== $allow )
         {
             if ( $rule['allow'] !== $allow )
                 return false;
         }
 
-        if ( isset( $rule['assert'] ) )
+        if( isset( $rule['assert'] ) )
         {
-            return $rule['assert']->assert( $this, $this->command['role'], $this->command['resource'], $this->command['privilege'] );
+            return $rule['assert']->assert( $this,
+                                            $this->command['role'],
+                                            $this->command['resource'],
+                                            $this->command['privilege'] );
         }
 
         return true;
@@ -425,13 +441,15 @@ class Acl extends \Erum\ModuleAbstract
 
     /**
      * Return correct role id.
-     * 
+     *
      * @param \Acl\iRole | string $role
-     * @return string 
+     *
+     * @throws Acl\Exception
+     * @return string
      */
     public function getRoleId( $role )
     {
-        if ( ( is_object( $role ) && !$role instanceof \Acl\iRole ) || is_array( $role ) )
+        if( ( is_object( $role ) && !$role instanceof \Acl\iRole ) || is_array( $role ) )
         {
             throw new \Acl\Exception( 'Role must be string (integer) or iRole implemented object, ' . gettype( $role ) . ' given.' );
         }
@@ -441,13 +459,15 @@ class Acl extends \Erum\ModuleAbstract
 
     /**
      * Return correct resource id.
-     * 
+     *
      * @param \Acl\iResource | string $resource
+     *
+     * @throws Acl\Exception
      * @return string
      */
     public function getResourceId( $resource )
     {
-        if ( is_object( $resource ) && !($resource instanceof \Acl\iResource) )
+        if( is_object( $resource ) && !( $resource instanceof \Acl\iResource ) )
         {
             throw new \Acl\Exception( 'Resource must be iResource implemented object, instance of ' . get_class( $resource ) . ' given.' );
         }
