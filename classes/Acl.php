@@ -103,12 +103,13 @@ class Acl extends \Erum\ModuleAbstract
      * @param \Acl\iRole | string     $role
      * @param \Acl\iResource | string $resource
      * @param string                  $action
+     * @param array $assertions
      *
      * @return Acl
      */
-    public function allow( $role, $resource, $action )
+    public function allow( $role, $resource, $action, $assertions = array() )
     {
-        $this->addRule( true, $role, $resource, $action );
+        $this->addRule( true, $role, $resource, $action, $assertions );
 
         return $this;
     }
@@ -120,12 +121,13 @@ class Acl extends \Erum\ModuleAbstract
      * @param \Acl\iRole | string     $role
      * @param \Acl\iResource | string $resource
      * @param string                  $action
+     * @param array $assertions
      *
      * @return Acl
      */
-    public function deny( $role, $resource, $action )
+    public function deny( $role, $resource, $action, $assertions = array() )
     {
-        $this->addRule( false, $role, $resource, $action );
+        $this->addRule( false, $role, $resource, $action, $assertions );
 
         return $this;
     }
@@ -171,7 +173,7 @@ class Acl extends \Erum\ModuleAbstract
      *
      * @param type $role
      *
-     * @return type
+     * @return boolean
      */
     public function hasRole( $role )
     {
@@ -179,15 +181,33 @@ class Acl extends \Erum\ModuleAbstract
     }
 
     /**
+     * Checks is $role is equal or child for $parentRole
+     *
+     * @param \Acl\iRole|string $role
+     * @param \Acl\iRole|string $parentRole
+     *
+     * @return boolean
+     */
+    public function matchRole( $role, $parentRole )
+    {
+        $roleId = $this->getRoleId( $role );
+        $parentRoleId = $this->getRoleId( $parentRole );
+
+        return ( $roleId == $parentRoleId || in_array( $roleId, $this->roles[ $parentRoleId ]['children'], false ) );
+    }
+
+    /**
      * Add new resource.
      *
-     * @param      $resource
+     * @param \Acl\iResource|string $resource
      *
      * @return Acl
      */
     public function addResource( $resource )
     {
-        $this->resources[$resource] = array();
+        $this->resources[$resource] = array(
+            'parent' => false
+        );
 
         return $this;
     }
@@ -195,7 +215,7 @@ class Acl extends \Erum\ModuleAbstract
     /**
      * Checks whether there is a resource.
      *
-     * @param \Acl\iResource | string $resource
+     * @param \Acl\iResource|string $resource
      *
      * @return boolean
      */
@@ -207,12 +227,13 @@ class Acl extends \Erum\ModuleAbstract
     /**
      * Internal method for rules adding
      *
-     * @param bool  $allow
+     * @param bool $allow
      * @param array $roles
      * @param array $resources
      * @param array $actions
+     * @param array $assertions
      */
-    protected function addRule( $allow, $roles, $resources, $actions )
+    protected function addRule( $allow, $roles, $resources, $actions, $assertions = array() )
     {
         // normalize input values
         $allow = $allow ? true : false;
@@ -240,7 +261,7 @@ class Acl extends \Erum\ModuleAbstract
         //Building rule from bottom to top
         $rule = array(
             'allow' => $allow,
-            //'assert' => $assertion,
+            'assert' => (array)$assertions,
         );
 
         $rule = null === $actions ? array( 'allActions' => $rule ) : array( 'byActionId' => array_fill_keys( $actions,
@@ -428,7 +449,7 @@ class Acl extends \Erum\ModuleAbstract
                 return false;
         }
 
-        if( isset( $rule['assert'] ) )
+        if( isset( $rule['assert'] ) && !empty( $rule['assert'] ) )
         {
             return $rule['assert']->assert( $this,
                                             $this->command['role'],
